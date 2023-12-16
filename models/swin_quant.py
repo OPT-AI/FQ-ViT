@@ -884,7 +884,7 @@ def swin_base_patch4_window7_224(pretrained=False,
     """
     compressed = 18
     if 'compress' in kwargs.keys():
-        compressed = 14 if kwargs['compress'] == True else 18
+        compressed = 12 if kwargs['compress'] == True else 18
     fq_model = SwinTransformer(patch_size=4,
                             window_size=7,
                             embed_dim=128,
@@ -903,10 +903,6 @@ def swin_base_patch4_window7_224(pretrained=False,
             map_location='cpu',
             check_hash=True)
         print(torch.hub.get_dir())
-        # export 
-        import timm
-        model = timm.create_model('swin_base_patch4_window7_224', pretrained=True)
+        # export
         fq_model.load_state_dict(checkpoint['model'], strict=False)
-        torch.onnx.export(fq_model, torch.randn(1, 3, 224, 224), 'swin_base_ref.onnx', verbose=True, input_names=['input'], output_names=['output'])
-        torch.onnx.export(model, torch.randn(1, 3, 224, 224), 'swin_base_patch4_window7_224.onnx', verbose=True, input_names=['input'], output_names=['output'])
     return fq_model
