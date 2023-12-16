@@ -449,7 +449,8 @@ class PatchMerging(nn.Module):
         """
         H, W = self.input_resolution
         B, L, C = x.shape
-        assert L == H * W, 'input feature has wrong size'
+        print(f'input feature {L} vs {(H, W)} = {H * W}')
+        assert L == H * W, f'input feature has wrong size {L} vs {(H, W)}'
         assert H % 2 == 0 and W % 2 == 0, f'x size ({H}*{W}) are not even.'
 
         x = x.view(B, H, W, C)
@@ -626,6 +627,7 @@ class SwinTransformer(nn.Module):
         self.mlp_ratio = mlp_ratio
         self.input_quant = input_quant
         self.cfg = cfg
+        print(cfg)
         if input_quant:
             self.qact_input = QAct(quant=quant,
                                    calibrate=calibrate,
@@ -880,10 +882,13 @@ def swin_base_patch4_window7_224(pretrained=False,
                                  **kwargs):
     """ Swin-B @ 224x224, trained ImageNet-1k
     """
-    model = SwinTransformer(patch_size=4,
+    compressed = 18
+    if 'compress' in kwargs.keys():
+        compressed = 14 if kwargs['compress'] == True else 18
+    fq_model = SwinTransformer(patch_size=4,
                             window_size=7,
                             embed_dim=128,
-                            depths=(2, 2, 18, 2),
+                            depths=(2, 2, compressed, 2),
                             num_heads=(4, 8, 16, 32),
                             norm_layer=QIntLayerNorm,
                             quant=quant,
@@ -897,5 +902,11 @@ def swin_base_patch4_window7_224(pretrained=False,
             'https://github.com/SwinTransformer/storage/releases/download/v1.0.0/swin_base_patch4_window7_224.pth',
             map_location='cpu',
             check_hash=True)
-        model.load_state_dict(checkpoint['model'], strict=False)
-    return model
+        print(torch.hub.get_dir())
+        # export 
+        import timm
+        model = timm.create_model('swin_base_patch4_window7_224', pretrained=True)
+        fq_model.load_state_dict(checkpoint['model'], strict=False)
+        torch.onnx.export(fq_model, torch.randn(1, 3, 224, 224), 'swin_base_ref.onnx', verbose=True, input_names=['input'], output_names=['output'])
+        torch.onnx.export(model, torch.randn(1, 3, 224, 224), 'swin_base_patch4_window7_224.onnx', verbose=True, input_names=['input'], output_names=['output'])
+    return fq_model

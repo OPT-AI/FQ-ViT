@@ -46,6 +46,8 @@ parser.add_argument('--print-freq',
                     type=int,
                     help='print frequency')
 parser.add_argument('--seed', default=0, type=int, help='seed')
+parser.add_argument('--export', default=False, action='store_true')
+parser.add_argument('--compress', default=False, action='store_true')
 
 
 def str2model(name):
@@ -87,8 +89,27 @@ def main():
 
     device = torch.device(args.device)
     cfg = Config(args.ptf, args.lis, args.quant_method)
-    model = str2model(args.model)(pretrained=True, cfg=cfg)
+    model = str2model(args.model)(pretrained=True, cfg=cfg, compress = args.compress)
+
     model = model.to(device)
+    #print model summary
+    #print(model)
+    if args.export:
+        # export to onnx
+        model.eval()
+        dummy_input = torch.randn(1, 3, 224, 224).to(device)
+        export_name = args.model
+        if args.ptf:
+            export_name += '_ptf'
+        if args.lis:
+            export_name += '_lis'
+        if args.quant:
+            export_name += '_quant'
+        if args.compress:
+            export_name += '_compress'
+        export_name += '.onnx'
+        torch.onnx.export(model, dummy_input, export_name, input_names=['input'], output_names=['output'])
+        return
 
     # Note: Different models have different strategies of data preprocessing.
     model_type = args.model.split('_')[0]
