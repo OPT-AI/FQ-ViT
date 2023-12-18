@@ -475,10 +475,15 @@ def deit_base_patch16_224(pretrained=False,
                           quant=False,
                           calibrate=False,
                           cfg=None,
+                          compress = False,
                           **kwargs):
+
+    compressed = 12
+    if compress == True:
+        compressed = 10
     model = VisionTransformer(patch_size=16,
                               embed_dim=768,
-                              depth=12,
+                              depth=compressed,
                               num_heads=12,
                               mlp_ratio=4,
                               qkv_bias=True,
@@ -502,6 +507,7 @@ def vit_base_patch16_224(pretrained=False,
                          quant=False,
                          calibrate=False,
                          cfg=None,
+                         compress = False,
                          **kwargs):
     model = VisionTransformer(patch_size=16,
                               embed_dim=768,
@@ -520,6 +526,21 @@ def vit_base_patch16_224(pretrained=False,
             'B_16-i21k-300ep-lr_0.001-aug_medium1-wd_0.1-do_0.0-sd_0.0--imagenet2012-steps_20k-lr_0.01-res_224.npz'
 
         load_weights_from_npz(model, url, check_hash=True)
+    if compress == True:
+        model_new =  VisionTransformer(patch_size=16,
+                              embed_dim=768,
+                              depth=10,
+                              num_heads=12,
+                              mlp_ratio=4,
+                              qkv_bias=True,
+                              norm_layer=partial(QIntLayerNorm, eps=1e-6),
+                              quant=quant,
+                              calibrate=calibrate,
+                              input_quant=False,
+                              cfg=cfg,
+                              **kwargs)
+        model_new.load_state_dict(model.state_dict(), strict=False)
+        model = model_new
     return model
 
 
